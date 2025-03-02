@@ -1,0 +1,19 @@
+{
+    "compilerOptions": {
+      "target": "ES2020",
+      "module": "NodeNext",
+      "rootDir": "./",
+      "moduleResolution": "NodeNext",
+      "outDir": "./dist",                                
+      "allowJs": true,
+      "esModuleInterop": true,
+      "forceConsistentCasingInFileNames": true,
+      "strict": true,
+      "noImplicitAny": true,
+      "strictNullChecks": true,
+      "strictFunctionTypes": true,
+      "strictBindCallApply": false,
+      "useUnknownInCatchVariables": true,
+      "noUnusedLocals": true
+    }
+  }

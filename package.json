@@ -1,0 +1,32 @@
+{
+    "name": "async-hooks",
+    "version": "0.0.0",
+    "description": "A library for working with async hooks",
+    "author": "Thomas Sarpong",
+    "main": "dist/index.js",
+    "types": "dist/index.d.ts",
+    "files": [
+        "dist"
+    ],
+    "publishConfig": {
+        "access": "public"
+    },
+    "private": false,
+    "type": "commonjs",
+    "devDependencies": {
+        "@types/jest": "^29.5.14",
+        "jest": "^29.7.0",
+        "ts-jest": "^29.2.6",
+        "ts-node": "^10.9.2",
+        "tsup": "^8.4.0",
+        "typescript": "^5.0.0"
+    },
+    "scripts": {
+        "test": "jest",
+        "lint": "eslint . --ext .ts",
+        "format": "prettier --write \"**/*.{ts,tsx,md}\"",
+        "build": "tsup src/index.ts --format cjs,esm --dts",
+        "publish": "changeset publish",
+        "bump": "changeset version"
+    }
+}
