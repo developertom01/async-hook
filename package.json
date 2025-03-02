@@ -1,8 +1,9 @@
 {
     "name": "async-hooks",
-    "version": "0.0.0",
+    "version": "0.0.0-development",
     "description": "A library for working with async hooks",
     "author": "Thomas Sarpong",
+    "license": "MIT",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
     "files": [
