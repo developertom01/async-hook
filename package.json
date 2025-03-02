@@ -1,11 +1,20 @@
 {
     "name": "hookasync",
-    "version": "0.0.0-development",
+    "version": "0.0.1-development",
     "description": "A library for working with async hooks",
     "author": "Thomas Sarpong",
     "license": "MIT",
     "main": "dist/index.js",
     "types": "dist/index.d.ts",
+    "homepage": "https://github.com/developertom01/async-hook",
+    "repository": {
+        "type": "git",
+        "url": "https://github.com/developertom01/async-hook.git"
+    },
+    "keywords": [
+        "async",
+        "hooks"
+    ],
     "files": [
         "dist"
     ],
