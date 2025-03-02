@@ -1,11 +1,11 @@
-# Async-Hook
+# hookasync
 
 A lightweight TypeScript library for adding hooks around asynchronous functions. This library allows you to execute code before or after your functions run, handle errors, or completely wrap your functions with custom logic.
 
 ## Installation
 
 ```bash
-npm install async-hooks
+npm install hookasync
 ```
 
 ## Usage
@@ -13,7 +13,7 @@ npm install async-hooks
 ### Basic Setup
 
 ```typescript
-import { Hook } from 'async-hooks';
+import { Hook } from 'hookasync';
 
 // Create a new hook instance
 const hook = new Hook();
