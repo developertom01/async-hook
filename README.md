@@ -126,7 +126,9 @@ const data2 = await wrappedFetch('https://api.example.com/data');
 
 ### Combining Multiple Hooks
 
-You can combine different types of hooks:
+You can combine different types of hooks in two ways:
+
+#### Method 1: Chain individual hook methods
 
 ```typescript
 const enhancedFetch = hook.before(hook.after(hook.error(fetchData)));
@@ -135,6 +137,25 @@ const enhancedFetch = hook.before(hook.after(hook.error(fetchData)));
 const withError = hook.error(fetchData);
 const withAfter = hook.after(withError);
 const fullyWrapped = hook.before(withAfter);
+```
+
+#### Method 2: Use the wrap() method (recommended)
+
+The `wrap()` method applies ALL registered hooks (before, after, error, and wrap hooks) in a single operation:
+
+```typescript
+// Add various hooks
+hook.addHook('before', logRequest);
+hook.addHook('after', logResponse);
+hook.addHook('error', logError);
+hook.addHook('wrap', cacheWrapper);
+
+// Apply all hooks at once with a single method call
+const fullyEnhancedFetch = hook.wrap(fetchData);
+
+// This will run before hooks, the function, after hooks, and 
+// handle errors with error hooks - all in the correct sequence
+const data = await fullyEnhancedFetch('https://api.example.com/data');
 ```
 
 ## API Reference
@@ -162,7 +183,11 @@ Adds a new hook of the specified type.
 
 ##### `wrap<T extends Function>(fn: T): T`
 
-Applies all registered wrap hooks to the given function.
+Applies all registered hooks to the given function in the following order:
+1. First applies any wrap hooks to transform the function
+2. Then applies before, after, and error hooks in the correct sequence
+
+This is the recommended method when you want to apply multiple types of hooks.
 
 ##### `before<T extends Function>(fn: T): T`
 

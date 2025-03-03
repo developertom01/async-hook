@@ -1,6 +1,6 @@
 {
     "name": "hookasync",
-    "version": "0.0.1-development",
+    "version": "0.0.2-development",
     "description": "A library for working with async hooks",
     "author": "Thomas Sarpong",
     "license": "MIT",
