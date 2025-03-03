@@ -1,9 +1,9 @@
 export type HookType = "before" | "after" | "error" | "wrap";
 
-export class Hook{
-    private _hooks:Record<HookType, any[]>;
+export class Hook {
+    private _hooks: Record<HookType, any[]>;
 
-    constructor(){
+    constructor() {
         this._hooks = {
             before: [],
             after: [],
@@ -12,25 +12,25 @@ export class Hook{
         }
     }
 
-    addHook(type: HookType, callback: any){
+    public addHook(type: HookType, callback: any) {
         this._hooks[type].push(callback);
     }
 
-    wrap<T extends Function>(fn: T): T {
+    public wrap<T extends Function>(fn: T): T {
         // First apply wrapper hooks
         let wrapped = this._hooks.wrap.reduce((wrapped, wrapHook) => {
             return wrapHook(wrapped);
         }, fn) as T;
-        
+
         // Then apply the before, after, and error hooks in sequence
         wrapped = this.error(this.after(this.before(wrapped)));
-        
+
         return wrapped;
     }
 
-    before<T extends Function>(fn: T): T {
+    public before<T extends Function>(fn: T): T {
         const hooks = this._hooks.before;
-        return (async function(this: any, ...args: any[]) {
+        return (async function (this: any, ...args: any[]) {
             // Execute all before hooks
             for (const hook of hooks) {
                 await hook(...args);
@@ -40,9 +40,9 @@ export class Hook{
         }) as unknown as T;
     }
 
-    after<T extends Function>(fn: T): T {
+    public after<T extends Function>(fn: T): T {
         const hooks = this._hooks.after;
-        return (async function(this: any, ...args: any[]) {
+        return (async function (this: any, ...args: any[]) {
             // Call the original function
             const result = await fn.apply(this, args);
             // Execute all after hooks
@@ -53,9 +53,9 @@ export class Hook{
         }) as unknown as T;
     }
 
-    error<T extends Function>(fn: T): T {
+    public error<T extends Function>(fn: T): T {
         const hooks = this._hooks.error;
-        return (async function(this: any, ...args: any[]) {
+        return (async function (this: any, ...args: any[]) {
             try {
                 // Call the original function
                 return await fn.apply(this, args);
