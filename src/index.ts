@@ -1,1 +1,1 @@
-export { Hook, HookType } from "./asyn-hook";
+export * from './async-hook';

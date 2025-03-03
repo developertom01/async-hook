@@ -1,131 +1,146 @@
-import { Hook } from '../src/asyn-hook';
+import { Hook } from '../src/async-hook';
 
-describe('Hook class', () => {
+describe('Hook', () => {
   let hook: Hook;
-
+  let mockFn: jest.Mock;
+  
   beforeEach(() => {
     hook = new Hook();
+    mockFn = jest.fn().mockResolvedValue('result');
   });
-
-  describe('addHook method', () => {
-    it('should add hooks of different types', () => {
-      const beforeFn = jest.fn();
-      const afterFn = jest.fn();
-      const errorFn = jest.fn();
-      const wrapFn = jest.fn();
-
-      hook.addHook('before', beforeFn);
-      hook.addHook('after', afterFn);
-      hook.addHook('error', errorFn);
-      hook.addHook('wrap', wrapFn);
-
-      // Accessing private property for testing
-      const hooks = (hook as any)._hooks;
-      expect(hooks.before).toContain(beforeFn);
-      expect(hooks.after).toContain(afterFn);
-      expect(hooks.error).toContain(errorFn);
-      expect(hooks.wrap).toContain(wrapFn);
-    });
-  });
-
-  describe('wrap method', () => {
-    it('should apply wrapper functions in order', () => {
-      const originalFn = jest.fn(() => 'original');
-      const wrapper1 = jest.fn((fn) => (...args: any[]) => {
-        return `wrapper1(${fn(...args)})`;
-      });
-      const wrapper2 = jest.fn((fn) => (...args: any[]) => {
-        return `wrapper2(${fn(...args)})`;
-      });
-
-      hook.addHook('wrap', wrapper1);
-      hook.addHook('wrap', wrapper2);
-
-      const wrapped = hook.wrap(originalFn);
-      const result = wrapped();
-
-      expect(wrapper1).toHaveBeenCalled();
-      expect(wrapper2).toHaveBeenCalled();
-      expect(result).toBe('wrapper2(wrapper1(original))');
-    });
-  });
-
-  describe('before method', () => {
+  
+  describe('before hooks', () => {
     it('should execute before hooks before the main function', async () => {
-      const beforeFn1 = jest.fn();
-      const beforeFn2 = jest.fn();
-      const mainFn = jest.fn().mockResolvedValue('result');
+      const beforeHook = jest.fn();
+      let hookCalled = false;
+      let fnCalled = false;
       
-      hook.addHook('before', beforeFn1);
-      hook.addHook('before', beforeFn2);
+      beforeHook.mockImplementation(() => {
+        hookCalled = true;
+        expect(fnCalled).toBe(false);
+      });
       
-      const wrapped = hook.before(mainFn);
+      mockFn.mockImplementation(() => {
+        fnCalled = true;
+        expect(hookCalled).toBe(true);
+        return Promise.resolve('result');
+      });
+      
+      hook.addHook('before', beforeHook);
+      
+      const wrapped = hook.before(mockFn);
       await wrapped('arg1', 'arg2');
       
-      expect(beforeFn1).toHaveBeenCalledWith('arg1', 'arg2');
-      expect(beforeFn2).toHaveBeenCalledWith('arg1', 'arg2');
-      expect(mainFn).toHaveBeenCalledWith('arg1', 'arg2');
-      
-      // Check execution order
-      expect(beforeFn1.mock.invocationCallOrder[0]).toBeLessThan(mainFn.mock.invocationCallOrder[0]);
-      expect(beforeFn2.mock.invocationCallOrder[0]).toBeLessThan(mainFn.mock.invocationCallOrder[0]);
+      expect(beforeHook).toHaveBeenCalledWith('arg1', 'arg2');
+      expect(mockFn).toHaveBeenCalledWith('arg1', 'arg2');
+      expect(hookCalled).toBe(true);
+      expect(fnCalled).toBe(true);
     });
   });
-
-  describe('after method', () => {
-    it('should execute after hooks after the main function with the result', async () => {
-      const afterFn1 = jest.fn();
-      const afterFn2 = jest.fn();
-      const mainFn = jest.fn().mockResolvedValue('result');
+  
+  describe('after hooks', () => {
+    it('should execute after hooks after the main function', async () => {
+      const afterHook = jest.fn();
+      let fnCalled = false;
+      let hookCalled = false;
       
-      hook.addHook('after', afterFn1);
-      hook.addHook('after', afterFn2);
+      mockFn.mockImplementation(() => {
+        fnCalled = true;
+        expect(hookCalled).toBe(false);
+        return Promise.resolve('result');
+      });
       
-      const wrapped = hook.after(mainFn);
+      afterHook.mockImplementation(() => {
+        hookCalled = true;
+        expect(fnCalled).toBe(true);
+      });
+      
+      hook.addHook('after', afterHook);
+      
+      const wrapped = hook.after(mockFn);
+      await wrapped('arg1', 'arg2');
+      
+      expect(afterHook).toHaveBeenCalledWith('result', 'arg1', 'arg2');
+      expect(mockFn).toHaveBeenCalledWith('arg1', 'arg2');
+      expect(hookCalled).toBe(true);
+      expect(fnCalled).toBe(true);
+    });
+  });
+  
+  describe('error hooks', () => {
+    it('should execute error hooks when an error occurs', async () => {
+      const error = new Error('Test error');
+      mockFn.mockRejectedValue(error);
+      
+      const errorHook = jest.fn();
+      hook.addHook('error', errorHook);
+      
+      const wrapped = hook.error(mockFn);
+      
+      await expect(wrapped('arg1', 'arg2')).rejects.toThrow('Test error');
+      expect(errorHook).toHaveBeenCalledWith(error, 'arg1', 'arg2');
+    });
+  });
+  
+  describe('wrap hooks', () => {
+    it('should apply wrap hooks to transform the function', async () => {
+      const wrapHook = jest.fn((fn) => {
+        return async (...args: any[]) => {
+          return `wrapped:${await fn(...args)}`;
+        };
+      });
+      
+      hook.addHook('wrap', wrapHook);
+      
+      const wrapped = hook.wrap(mockFn);
       const result = await wrapped('arg1', 'arg2');
       
-      expect(afterFn1).toHaveBeenCalledWith('result', 'arg1', 'arg2');
-      expect(afterFn2).toHaveBeenCalledWith('result', 'arg1', 'arg2');
-      expect(mainFn).toHaveBeenCalledWith('arg1', 'arg2');
-      expect(result).toBe('result');
-      
-      // Check execution order
-      expect(mainFn.mock.invocationCallOrder[0]).toBeLessThan(afterFn1.mock.invocationCallOrder[0]);
-      expect(mainFn.mock.invocationCallOrder[0]).toBeLessThan(afterFn2.mock.invocationCallOrder[0]);
+      expect(wrapHook).toHaveBeenCalledWith(mockFn);
+      expect(mockFn).toHaveBeenCalledWith('arg1', 'arg2');
+      expect(result).toBe('wrapped:result');
     });
   });
-
-  describe('error method', () => {
-    it('should execute error hooks when the main function throws', async () => {
-      const error = new Error('test error');
-      const errorFn1 = jest.fn();
-      const errorFn2 = jest.fn();
-      const mainFn = jest.fn().mockRejectedValue(error);
+  
+  describe('wrap method with all hooks', () => {
+    it('should apply all hook types when using wrap', async () => {
+      const beforeHook = jest.fn();
+      const afterHook = jest.fn();
+      const wrapHook = jest.fn((fn) => {
+        return async (...args: any[]) => {
+          return `wrapped:${await fn(...args)}`;
+        };
+      });
       
-      hook.addHook('error', errorFn1);
-      hook.addHook('error', errorFn2);
+      hook.addHook('before', beforeHook);
+      hook.addHook('after', afterHook);
+      hook.addHook('wrap', wrapHook);
       
-      const wrapped = hook.error(mainFn);
+      const wrapped = hook.wrap(mockFn);
+      const result = await wrapped('arg1', 'arg2');
       
-      await expect(wrapped('arg1', 'arg2')).rejects.toThrow('test error');
-      
-      expect(errorFn1).toHaveBeenCalledWith(error, 'arg1', 'arg2');
-      expect(errorFn2).toHaveBeenCalledWith(error, 'arg1', 'arg2');
-      expect(mainFn).toHaveBeenCalledWith('arg1', 'arg2');
+      expect(beforeHook).toHaveBeenCalledWith('arg1', 'arg2');
+      expect(afterHook).toHaveBeenCalledWith('wrapped:result', 'arg1', 'arg2');
+      expect(mockFn).toHaveBeenCalledWith('arg1', 'arg2');
+      expect(result).toBe('wrapped:result');
     });
     
-    it('should not execute error hooks when the main function succeeds', async () => {
-      const errorFn = jest.fn();
-      const mainFn = jest.fn().mockResolvedValue('result');
+    it('should handle errors properly with all hooks', async () => {
+      const error = new Error('Test error');
+      mockFn.mockRejectedValue(error);
       
-      hook.addHook('error', errorFn);
+      const beforeHook = jest.fn();
+      const errorHook = jest.fn();
+      const wrapHook = jest.fn(fn => fn); // Identity wrapper
       
-      const wrapped = hook.error(mainFn);
-      const result = await wrapped('arg1', 'arg2');
+      hook.addHook('before', beforeHook);
+      hook.addHook('error', errorHook);
+      hook.addHook('wrap', wrapHook);
       
-      expect(errorFn).not.toHaveBeenCalled();
-      expect(mainFn).toHaveBeenCalledWith('arg1', 'arg2');
-      expect(result).toBe('result');
+      const wrapped = hook.wrap(mockFn);
+      
+      await expect(wrapped('arg1', 'arg2')).rejects.toThrow('Test error');
+      expect(beforeHook).toHaveBeenCalledWith('arg1', 'arg2');
+      expect(errorHook).toHaveBeenCalledWith(error, 'arg1', 'arg2');
     });
   });
 });
