@@ -13,193 +13,234 @@ npm install hookasync
 ### Basic Setup
 
 ```typescript
-import { Hook } from 'hookasync';
+import hookasync from 'hookasync';
 
-// Create a new hook instance
-const hook = new Hook();
+// Create a collection hook
+const hook = hookasync.Collection();
+
+// Add hooks for specific endpoints
+hook.before("request", (options) => {
+  console.log(`Request started for: ${options.url}`);
+});
+
+hook.after("request", (result, options) => {
+  console.log(`Request completed for: ${options.url}`);
+  return result;
+});
+
+// Use the hook with a function
+async function fetchData(options) {
+  const response = await fetch(options.url);
+  return response.json();
+}
+
+// Register the function with the hook
+const result = await hook("request", fetchData, { url: "https://api.example.com/data" });
 ```
 
-### Adding Before Hooks
+### Hook Types
+
+#### Before Hooks
 
 Execute code before your function runs:
 
 ```typescript
-// Define a function with a before hook
-const logRequest = async (url: string) => {
-  console.log(`Request started: ${url}`);
-};
-
-// Add the hook
-await hook.addHook('before', logRequest);
-
-// Create your main function
-const fetchData = async (url: string) => {
-  const response = await fetch(url);
-  return response.json();
-};
-
-// Apply the hook
-const wrappedFetch = await hook.before(fetchData);
-
-// Usage - this will log the request before fetching
-const data = await wrappedFetch('https://api.example.com/data');
+// Add a before hook
+hook.before("request", (options) => {
+  console.log(`Request started for: ${options.url}`);
+  // You can modify options - changes will be seen by the main function
+  options.headers = { ...options.headers, 'X-Custom-Header': 'value' };
+});
 ```
 
-### Adding After Hooks
+#### After Hooks
 
 Execute code after your function completes:
 
 ```typescript
-// Define a function with an after hook
-const logResponse = async (result: any, url: string) => {
-  console.log(`Request completed: ${url}, got ${result.length} items`);
-};
-
-// Add the hook
-hook.addHook('after', logResponse);
-
-// Apply the hook
-const wrappedFetch = hook.after(fetchData);
-
-// Usage - this will log details about the response after fetching
-const data = await wrappedFetch('https://api.example.com/data');
+// Add an after hook
+hook.after("request", (result, options) => {
+  console.log(`Request completed for: ${options.url}, got ${result.length} items`);
+  // Return value is ignored, but you can still use this hook to log or process the result
+  // The original result is passed to subsequent hooks and returned to the caller
+});
 ```
 
-### Error Handling
+#### Error Hooks
 
-Execute code when your function throws an error:
+Handle errors from your function:
 
 ```typescript
-// Define an error handler
-const logError = async (err: Error, url: string) => {
-  console.error(`Request failed for ${url}: ${err.message}`);
-};
-
-// Add the hook
-hook.addHook('error', logError);
-
-// Apply the hook
-const wrappedFetch = hook.error(fetchData);
-
-// Usage - this will log any errors that occur during the fetch
-try {
-  const data = await wrappedFetch('https://invalid-url');
-} catch (err) {
-  // The error is still thrown after hooks run
-  console.log('Caught error in main code');
-}
+// Add an error hook
+hook.error("request", (error, options) => {
+  console.error(`Request failed for ${options.url}: ${error.message}`);
+  
+  // Error hooks can:
+  // 1. Return a value (prevents the error from propagating)
+  return { error: error.message, data: [] };
+  
+  // 2. Or throw to let the error propagate
+  // throw error;
+});
 ```
 
-### Function Wrapping
+#### Wrap Hooks
 
 Completely transform how your function works:
 
 ```typescript
-// Define a wrapper function
-const cacheWrapper = (fn: Function) => {
-  const cache: Record<string, any> = {};
-  
-  return async (url: string) => {
-    if (cache[url]) {
-      console.log(`Using cached result for ${url}`);
-      return cache[url];
+// Create a wrapper that adds caching
+const cache = {};
+
+hook.wrap("request", (fn) => {
+  // fn is the original function or previously wrapped function
+  return async (options) => {
+    const cacheKey = options.url;
+    
+    if (cache[cacheKey]) {
+      console.log(`Using cached result for ${options.url}`);
+      return cache[cacheKey];
     }
     
-    console.log(`No cache for ${url}, calling original function`);
-    const result = await fn(url);
-    cache[url] = result;
+    console.log(`No cache for ${options.url}, calling original function`);
+    const result = await fn(options);
+    cache[cacheKey] = result;
     return result;
   };
-};
-
-// Add the hook
-hook.addHook('wrap', cacheWrapper);
-
-// Apply the hook
-const wrappedFetch = hook.wrap(fetchData);
-
-// First call will fetch data
-const data1 = await wrappedFetch('https://api.example.com/data');
-// Second call with same URL will use cached data
-const data2 = await wrappedFetch('https://api.example.com/data');
+});
 ```
 
-### Combining Multiple Hooks
+### Hook Execution Order
 
-You can combine different types of hooks in two ways:
+When using multiple hooks, they execute in the following order:
 
-#### Method 1: Chain individual hook methods
+1. All **wrap** hooks are applied first (in registration order)
+2. Then **before** hooks run (in registration order)
+3. Then the original function executes
+4. Then **after** hooks run (in registration order)
+5. If an error occurs at any point, **error** hooks run
+
+### Removing Hooks
+
+You can remove hooks when they are no longer needed:
 
 ```typescript
-const enhancedFetch = hook.before(hook.after(hook.error(fetchData)));
+// Remove a specific hook
+const logHook = (options) => console.log(`Request: ${options.url}`);
+hook.before("request", logHook);
+// Later:
+hook.remove("request", logHook);
 
-// Or more clearly with intermediate variables
-const withError = hook.error(fetchData);
-const withAfter = hook.after(withError);
-const fullyWrapped = hook.before(withAfter);
+// Remove all hooks for a specific name
+hook.remove("request");
+
+// Remove all hooks
+hook.remove();
 ```
 
-#### Method 2: Use the wrap() method (recommended)
+### Advanced: Registering Multiple Hooks
 
-The `wrap()` method applies ALL registered hooks (before, after, error, and wrap hooks) in a single operation:
+You can register a function with multiple hook names at once:
 
 ```typescript
-// Add various hooks
-hook.addHook('before', logRequest);
-hook.addHook('after', logResponse);
-hook.addHook('error', logError);
-hook.addHook('wrap', cacheWrapper);
+// Register the same function with multiple hook names
+const result = await hook(["auth", "request", "response"], fetchData, options);
 
-// Apply all hooks at once with a single method call
-const fullyEnhancedFetch = await hook.wrap(fetchData);
+// This applies all hooks from each name in sequence (right to left)
+// equivalent to:
+// const fn1 = applyResponseHooks(fetchData)
+// const fn2 = applyRequestHooks(fn1)
+// const result = await applyAuthHooks(fn2)(options)
+```
 
-// This will run before hooks, the function, after hooks, and 
-// handle errors with error hooks - all in the correct sequence
-const data = await fullyEnhancedFetch('https://api.example.com/data');
+## TypeScript Usage
+
+The library includes TypeScript definitions:
+
+```typescript
+import hookasync from 'hookasync';
+
+interface RequestOptions {
+  url: string;
+  headers?: Record<string, string>;
+}
+
+interface ResponseData {
+  id: number;
+  name: string;
+}
+
+const hook = hookasync.Collection();
+
+// TypeScript will infer parameter types
+hook.before("request", (options: RequestOptions) => {
+  options.headers = { 'Authorization': 'Bearer token' };
+});
+
+hook.after("request", (result: ResponseData[], options: RequestOptions) => {
+  console.log(`Got ${result.length} items`);
+});
+
+async function fetchData(options: RequestOptions): Promise<ResponseData[]> {
+  // Implementation
+}
+
+// Get typed results
+const result: ResponseData[] = await hook("request", fetchData, { url: "/api/data" });
 ```
 
 ## API Reference
 
-### `Hook` Class
+### Static Methods
 
-The main class that provides hook functionality.
+#### `hookasync.Collection()`
 
-#### Constructor
+Creates a collection hook that allows registering hooks for named operations.
 
-```typescript
-constructor()
-```
+### Instance Methods
 
-Creates a new Hook instance.
+#### `hook.before(name, callback)`
 
-#### Methods
+Adds a hook to run before the specified operation.
 
-##### `async addHook(type: HookType, callback: Function)`
+- **name**: The operation name (string)
+- **callback**: Function to call before the operation. Receives options.
 
-Adds a new hook of the specified type.
+#### `hook.after(name, callback)`
 
-- **type**: `'before' | 'after' | 'error' | 'wrap'`
-- **callback**: The function to be called as a hook
+Adds a hook to run after the specified operation.
 
-##### `async wrap<T extends Function>(fn: T): Promise<T>`
+- **name**: The operation name (string)
+- **callback**: Function to call after the operation. Receives result and options.
 
-Applies all registered hooks to the given function in the following order:
-1. First applies any wrap hooks to transform the function
-2. Then applies before, after, and error hooks in the correct sequence
+#### `hook.error(name, callback)`
 
-This is the recommended method when you want to apply multiple types of hooks.
+Adds a hook to run when an error occurs during the operation.
 
-##### `async before<T extends Function>(fn: T): Promise<T>`
+- **name**: The operation name (string)
+- **callback**: Function to call when error occurs. Receives error and options.
 
-Returns a wrapped version of the function that executes all "before" hooks before calling the original function.
+#### `hook.wrap(name, wrapper)`
 
-##### `async after<T extends Function>(fn: T): Promise<T>`
+Adds a wrapper function that transforms the operation.
 
-Returns a wrapped version of the function that executes all "after" hooks after the original function completes.
+- **name**: The operation name (string)
+- **wrapper**: Function that receives the original function and returns a new function.
 
-##### `async error<T extends Function>(fn: T): Promise<T>`
+#### `hook.remove([name], [callback])`
 
-Returns a wrapped version of the function that executes all "error" hooks when the original function throws an error.
+Removes hooks.
+
+- **name** (optional): The operation name to remove hooks from
+- **callback** (optional): Specific hook function to remove
+
+#### `hook(name, method, options)`
+
+Executes a method with registered hooks.
+
+- **name**: The operation name (string) or array of names
+- **method**: The function to execute
+- **options**: Options to pass to the function and hooks
 
 ## License
 
