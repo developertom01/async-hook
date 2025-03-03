@@ -30,7 +30,7 @@ const logRequest = async (url: string) => {
 };
 
 // Add the hook
-hook.addHook('before', logRequest);
+await hook.addHook('before', logRequest);
 
 // Create your main function
 const fetchData = async (url: string) => {
@@ -39,7 +39,7 @@ const fetchData = async (url: string) => {
 };
 
 // Apply the hook
-const wrappedFetch = hook.before(fetchData);
+const wrappedFetch = await hook.before(fetchData);
 
 // Usage - this will log the request before fetching
 const data = await wrappedFetch('https://api.example.com/data');
@@ -151,7 +151,7 @@ hook.addHook('error', logError);
 hook.addHook('wrap', cacheWrapper);
 
 // Apply all hooks at once with a single method call
-const fullyEnhancedFetch = hook.wrap(fetchData);
+const fullyEnhancedFetch = await hook.wrap(fetchData);
 
 // This will run before hooks, the function, after hooks, and 
 // handle errors with error hooks - all in the correct sequence
@@ -174,14 +174,14 @@ Creates a new Hook instance.
 
 #### Methods
 
-##### `addHook(type: HookType, callback: Function)`
+##### `async addHook(type: HookType, callback: Function)`
 
 Adds a new hook of the specified type.
 
 - **type**: `'before' | 'after' | 'error' | 'wrap'`
 - **callback**: The function to be called as a hook
 
-##### `wrap<T extends Function>(fn: T): T`
+##### `async wrap<T extends Function>(fn: T): Promise<T>`
 
 Applies all registered hooks to the given function in the following order:
 1. First applies any wrap hooks to transform the function
@@ -189,15 +189,15 @@ Applies all registered hooks to the given function in the following order:
 
 This is the recommended method when you want to apply multiple types of hooks.
 
-##### `before<T extends Function>(fn: T): T`
+##### `async before<T extends Function>(fn: T): Promise<T>`
 
 Returns a wrapped version of the function that executes all "before" hooks before calling the original function.
 
-##### `after<T extends Function>(fn: T): T`
+##### `async after<T extends Function>(fn: T): Promise<T>`
 
 Returns a wrapped version of the function that executes all "after" hooks after the original function completes.
 
-##### `error<T extends Function>(fn: T): T`
+##### `async error<T extends Function>(fn: T): Promise<T>`
 
 Returns a wrapped version of the function that executes all "error" hooks when the original function throws an error.
 

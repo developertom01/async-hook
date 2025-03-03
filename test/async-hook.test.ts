@@ -26,9 +26,9 @@ describe('Hook', () => {
         return Promise.resolve('result');
       });
       
-      hook.addHook('before', beforeHook);
+      await hook.addHook('before', beforeHook);
       
-      const wrapped = hook.before(mockFn);
+      const wrapped = await hook.before(mockFn);
       await wrapped('arg1', 'arg2');
       
       expect(beforeHook).toHaveBeenCalledWith('arg1', 'arg2');
@@ -55,9 +55,9 @@ describe('Hook', () => {
         expect(fnCalled).toBe(true);
       });
       
-      hook.addHook('after', afterHook);
+      await hook.addHook('after', afterHook);
       
-      const wrapped = hook.after(mockFn);
+      const wrapped = await hook.after(mockFn);
       await wrapped('arg1', 'arg2');
       
       expect(afterHook).toHaveBeenCalledWith('result', 'arg1', 'arg2');
@@ -73,9 +73,9 @@ describe('Hook', () => {
       mockFn.mockRejectedValue(error);
       
       const errorHook = jest.fn();
-      hook.addHook('error', errorHook);
+      await hook.addHook('error', errorHook);
       
-      const wrapped = hook.error(mockFn);
+      const wrapped = await hook.error(mockFn);
       
       await expect(wrapped('arg1', 'arg2')).rejects.toThrow('Test error');
       expect(errorHook).toHaveBeenCalledWith(error, 'arg1', 'arg2');
@@ -90,9 +90,9 @@ describe('Hook', () => {
         };
       });
       
-      hook.addHook('wrap', wrapHook);
+      await hook.addHook('wrap', wrapHook);
       
-      const wrapped = hook.wrap(mockFn);
+      const wrapped = await hook.wrap(mockFn);
       const result = await wrapped('arg1', 'arg2');
       
       expect(wrapHook).toHaveBeenCalledWith(mockFn);
@@ -111,11 +111,11 @@ describe('Hook', () => {
         };
       });
       
-      hook.addHook('before', beforeHook);
-      hook.addHook('after', afterHook);
-      hook.addHook('wrap', wrapHook);
+      await hook.addHook('before', beforeHook);
+      await hook.addHook('after', afterHook);
+      await hook.addHook('wrap', wrapHook);
       
-      const wrapped = hook.wrap(mockFn);
+      const wrapped = await hook.wrap(mockFn);
       const result = await wrapped('arg1', 'arg2');
       
       expect(beforeHook).toHaveBeenCalledWith('arg1', 'arg2');
@@ -132,11 +132,11 @@ describe('Hook', () => {
       const errorHook = jest.fn();
       const wrapHook = jest.fn(fn => fn); // Identity wrapper
       
-      hook.addHook('before', beforeHook);
-      hook.addHook('error', errorHook);
-      hook.addHook('wrap', wrapHook);
+      await hook.addHook('before', beforeHook);
+      await hook.addHook('error', errorHook);
+      await hook.addHook('wrap', wrapHook);
       
-      const wrapped = hook.wrap(mockFn);
+      const wrapped = await hook.wrap(mockFn);
       
       await expect(wrapped('arg1', 'arg2')).rejects.toThrow('Test error');
       expect(beforeHook).toHaveBeenCalledWith('arg1', 'arg2');

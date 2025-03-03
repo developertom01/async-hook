@@ -12,23 +12,23 @@ export class Hook {
         }
     }
 
-    public addHook(type: HookType, callback: any) {
+    public async addHook(type: HookType, callback: any) {
         this._hooks[type].push(callback);
     }
 
-    public wrap<T extends Function>(fn: T): T {
+    public async wrap<T extends Function>(fn: T): Promise<T> {
         // First apply wrapper hooks
         let wrapped = this._hooks.wrap.reduce((wrapped, wrapHook) => {
             return wrapHook(wrapped);
         }, fn) as T;
 
         // Then apply the before, after, and error hooks in sequence
-        wrapped = this.error(this.after(this.before(wrapped)));
+        wrapped = await this.error(await this.after(await this.before(wrapped)));
 
         return wrapped;
     }
 
-    public before<T extends Function>(fn: T): T {
+    public async before<T extends Function>(fn: T): Promise<T> {
         const hooks = this._hooks.before;
         return (async function (this: any, ...args: any[]) {
             // Execute all before hooks
@@ -40,7 +40,7 @@ export class Hook {
         }) as unknown as T;
     }
 
-    public after<T extends Function>(fn: T): T {
+    public async after<T extends Function>(fn: T): Promise<T> {
         const hooks = this._hooks.after;
         return (async function (this: any, ...args: any[]) {
             // Call the original function
@@ -53,7 +53,7 @@ export class Hook {
         }) as unknown as T;
     }
 
-    public error<T extends Function>(fn: T): T {
+    public async error<T extends Function>(fn: T): Promise<T> {
         const hooks = this._hooks.error;
         return (async function (this: any, ...args: any[]) {
             try {
